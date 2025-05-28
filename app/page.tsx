@@ -112,34 +112,18 @@ export default function MedicalMLApp() {
   }
 
   const runPrediction = async () => {
-    if (!validateInputs()) return
-
-    setIsLoading(true)
-    setError("")
-
+    if (!validateInputs()) return;
+  
+    setIsLoading(true);
+    setError("");
+  
     try {
-      // Generate training data with missing values
-      const { trainingData, trainingLabels } = generateTrainingData()
-
-      // Preprocess training data to handle NaN values
-      const processedTrainingData = trainingData.map((sample) => preprocessData(sample))
-
-      // Random Forest regression model options
-      const rfOptions = {
-        nEstimators: 10,
-        maxDepth: 5,
-        minSamplesSplit: 2,
-        minSamplesLeaf: 1,
-        seed: 42,
-      }
-
-      // Create Random Forest regression model
-      const regression = new RandomForestRegression(rfOptions)
-
-      // Train the model
-      regression.train(processedTrainingData, trainingLabels)
-
-      // Convert input data to numeric array, using NaN for empty values
+      // モデルの読み込み
+      const modelData = require('../trained_model/top10_rf_alm_model.json');  
+      // Random Forest regression modelのインポート
+      const regression = RandomForestRegression.load(modelData);
+  
+      // 入力データを数値配列に変換し、NaNを空の値として使用
       const inputArray = [
         data.weight === "" ? Number.NaN : Number(data.weight),
         data.height === "" ? Number.NaN : Number(data.height),
@@ -151,21 +135,21 @@ export default function MedicalMLApp() {
         data.uricAcid === "" ? Number.NaN : Number(data.uricAcid),
         data.wbc === "" ? Number.NaN : Number(data.wbc),
         data.pancreaticAmylase === "" ? Number.NaN : Number(data.pancreaticAmylase),
-      ]
-
-      // Preprocess input data to handle NaN values
-      const processedInput = preprocessData(inputArray)
-
-      // Run prediction
-      const prediction = regression.predict([processedInput])
-      setResult(prediction[0])
+      ];
+  
+      // 入力データを前処理してNaNを処理
+      const processedInput = preprocessData(inputArray);
+  
+      // 予測を実行
+      const prediction = regression.predict([processedInput]);
+      setResult(prediction[0]);
     } catch (err) {
-      setError("An error occurred during prediction. Please check your input values.")
-      console.error("Prediction error:", err)
+      setError("An error occurred during prediction. Please check your input values.");
+      console.error("Prediction error:", err);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const clearForm = () => {
     setData(initialData)
