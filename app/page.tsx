@@ -9,44 +9,36 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Calculator } from "lucide-react"
 import { RandomForestRegression } from "ml-random-forest"
 import Image from "next/image"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface MedicalData {
+  sex: string
   weight: string
   height: string
   age: string
   alp: string
   creatinine: string
   ldh: string
-  triglycerides: string
-  uricAcid: string
-  wbc: string
-  pancreaticAmylase: string
 }
 
 const initialData: MedicalData = {
+  sex: "",
   weight: "",
   height: "",
   age: "",
   alp: "",
   creatinine: "",
   ldh: "",
-  triglycerides: "",
-  uricAcid: "",
-  wbc: "",
-  pancreaticAmylase: "",
 }
 
 const fields = [
+  { key: "sex" as keyof MedicalData, label: "Sex", unit: "", placeholder: "Select" },
   { key: "weight" as keyof MedicalData, label: "Weight", unit: "kg", placeholder: "e.g., 70" },
   { key: "height" as keyof MedicalData, label: "Height", unit: "m", placeholder: "e.g., 1.75" },
   { key: "age" as keyof MedicalData, label: "Age", unit: "year", placeholder: "e.g., 30" },
   { key: "alp" as keyof MedicalData, label: "ALP", unit: "U/L", placeholder: "e.g., 100" },
   { key: "creatinine" as keyof MedicalData, label: "Creatinine", unit: "mg/dL", placeholder: "e.g., 1.0" },
   { key: "ldh" as keyof MedicalData, label: "LDH", unit: "U/L", placeholder: "e.g., 200" },
-  { key: "triglycerides" as keyof MedicalData, label: "Triglycerides", unit: "mg/dL", placeholder: "e.g., 150" },
-  { key: "uricAcid" as keyof MedicalData, label: "Uric acid", unit: "mg/dL", placeholder: "e.g., 5.0" },
-  { key: "wbc" as keyof MedicalData, label: "White blood cell count", unit: "10³/μL", placeholder: "e.g., 7.0" },
-  { key: "pancreaticAmylase" as keyof MedicalData, label: "Pancreatic amylase", unit: "U/L", placeholder: "e.g., 50" },
 ]
 
 export default function MedicalMLApp() {
@@ -62,6 +54,8 @@ export default function MedicalMLApp() {
 
   const validateInputs = (): boolean => {
     for (const field of fields) {
+      if (field.key === "sex") continue; // Sex is validated separately
+      
       const value = data[field.key]
       if (value !== "" && (isNaN(Number(value)) || Number(value) <= 0)) {
         setError(`Please enter a valid positive number for ${field.label} or leave it empty`)
@@ -71,42 +65,9 @@ export default function MedicalMLApp() {
     return true
   }
 
-  const generateTrainingData = () => {
-    // Generate sample training data with some missing values (NaN)
-    const trainingData = []
-    const trainingLabels = []
-
-    for (let i = 0; i < 100; i++) {
-      const sample = [
-        Math.random() > 0.1 ? Math.random() * 50 + 50 : Number.NaN, // Weight: 50-100 kg (10% missing)
-        Math.random() > 0.05 ? Math.random() * 0.5 + 1.5 : Number.NaN, // Height: 1.5-2.0 m (5% missing)
-        Math.random() > 0.02 ? Math.random() * 50 + 20 : Number.NaN, // Age: 20-70 years (2% missing)
-        Math.random() > 0.15 ? Math.random() * 200 + 50 : Number.NaN, // ALP: 50-250 U/L (15% missing)
-        Math.random() > 0.1 ? Math.random() * 2 + 0.5 : Number.NaN, // Creatinine: 0.5-2.5 mg/dL (10% missing)
-        Math.random() > 0.12 ? Math.random() * 300 + 100 : Number.NaN, // LDH: 100-400 U/L (12% missing)
-        Math.random() > 0.2 ? Math.random() * 200 + 50 : Number.NaN, // Triglycerides: 50-250 mg/dL (20% missing)
-        Math.random() > 0.18 ? Math.random() * 5 + 3 : Number.NaN, // Uric acid: 3-8 mg/dL (18% missing)
-        Math.random() > 0.08 ? Math.random() * 10 + 4 : Number.NaN, // WBC: 4-14 10³/μL (8% missing)
-        Math.random() > 0.25 ? Math.random() * 100 + 20 : Number.NaN, // Pancreatic amylase: 20-120 U/L (25% missing)
-      ]
-
-      // Simple synthetic target value (use actual medical outcomes in real applications)
-      const nonNanValues = sample.filter((val) => !isNaN(val))
-      const target =
-        nonNanValues.length > 0
-          ? nonNanValues.reduce((sum, val) => sum + val, 0) / nonNanValues.length + Math.random() * 10
-          : Math.random() * 50 + 25
-
-      trainingData.push(sample)
-      trainingLabels.push(target)
-    }
-
-    return { trainingData, trainingLabels }
-  }
-
   const preprocessData = (inputArray: number[]) => {
     // Handle NaN values by replacing them with mean values from training data
-    const meanValues = [70, 1.7, 45, 150, 1.2, 250, 150, 5.5, 7.5, 70] // Approximate mean values
+    const meanValues = [0.5, 70, 1.7, 45, 150, 1.2, 250] // Approximate mean values for [Sex, Weight, Height, Age, ALP, Creatinine, LDH]
 
     return inputArray.map((value, index) => (isNaN(value) ? meanValues[index] : value))
   }
@@ -119,22 +80,19 @@ export default function MedicalMLApp() {
   
     try {
       // モデルの読み込み
-      const modelData = require('../trained_model/top10_rf_alm_model.json');  
+      const modelData = require('../trained_model/top7_rf_alm_model.json');  
       // Random Forest regression modelのインポート
       const regression = RandomForestRegression.load(modelData);
   
       // 入力データを数値配列に変換し、NaNを空の値として使用
       const inputArray = [
+        data.sex === "" ? Number.NaN : data.sex === "female" ? 0 : 1,
         data.weight === "" ? Number.NaN : Number(data.weight),
         data.height === "" ? Number.NaN : Number(data.height),
         data.age === "" ? Number.NaN : Number(data.age),
         data.alp === "" ? Number.NaN : Number(data.alp),
         data.creatinine === "" ? Number.NaN : Number(data.creatinine),
         data.ldh === "" ? Number.NaN : Number(data.ldh),
-        data.triglycerides === "" ? Number.NaN : Number(data.triglycerides),
-        data.uricAcid === "" ? Number.NaN : Number(data.uricAcid),
-        data.wbc === "" ? Number.NaN : Number(data.wbc),
-        data.pancreaticAmylase === "" ? Number.NaN : Number(data.pancreaticAmylase),
       ];
   
       // 入力データを前処理してNaNを処理
@@ -170,7 +128,7 @@ export default function MedicalMLApp() {
           <p className="text-gray-600 mb-4">Enter medical data to predict Appendicular Lean Mass</p>
           <div className="max-w-3xl mx-auto text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
             <p>
-              This application is a simplified version using LightGBM and a subset of the data. If you are interested in
+              This application is a simplified version using Random Forest and a subset of the data. If you are interested in
               using a more accurate TabPFN model, please feel free to contact us at{" "}
               <a href="mailto:k-kita@radiol.med.osaka-u.ac.jp" className="text-blue-600 hover:text-blue-800 underline">
                 k-kita@radiol.med.osaka-u.ac.jp
@@ -196,17 +154,29 @@ export default function MedicalMLApp() {
               {fields.map((field) => (
                 <div key={field.key} className="space-y-2">
                   <Label htmlFor={field.key}>
-                    {field.label} ({field.unit})
+                    {field.label} {field.unit && `(${field.unit})`}
                   </Label>
-                  <Input
-                    id={field.key}
-                    type="number"
-                    step="any"
-                    placeholder={field.placeholder}
-                    value={data[field.key]}
-                    onChange={(e) => handleInputChange(field.key, e.target.value)}
-                    className="w-full"
-                  />
+                  {field.key === "sex" ? (
+                    <Select value={data[field.key]} onValueChange={(value) => handleInputChange(field.key, value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id={field.key}
+                      type="number"
+                      step="any"
+                      placeholder={field.placeholder}
+                      value={data[field.key]}
+                      onChange={(e) => handleInputChange(field.key, e.target.value)}
+                      className="w-full"
+                    />
+                  )}
                 </div>
               ))}
 
@@ -277,13 +247,15 @@ export default function MedicalMLApp() {
               <CardTitle>Input Data Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {fields.map((field) => (
                   <div key={field.key} className="text-center p-3 bg-gray-50 rounded-lg">
                     <div className="text-sm text-gray-600">{field.label}</div>
                     <div className="font-semibold">
                       {data[field.key] === "" ? (
                         <span className="text-gray-400">Missing (NaN)</span>
+                      ) : field.key === "sex" ? (
+                        data[field.key]
                       ) : (
                         `${data[field.key]} ${field.unit}`
                       )}

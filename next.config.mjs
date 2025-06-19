@@ -9,6 +9,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    skipNodeCompatibilityCheck: true,
+    skipTrailingSlashRedirect: true
+  },
 }
 
 export default nextConfig
