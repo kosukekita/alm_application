@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Calculator } from "lucide-react"
-import { RandomForestRegression } from "ml-random-forest"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -79,35 +78,39 @@ export default function MedicalMLApp() {
     setError("");
   
     try {
-      // モデルの読み込み
-      const modelData = require('../trained_model/top7_rf_alm_model.json');  
-      // Random Forest regression modelのインポート
-      const regression = RandomForestRegression.load(modelData);
-  
       // 入力データを数値配列に変換し、NaNを空の値として使用
       const inputArray = [
         data.sex === "" ? Number.NaN : data.sex === "female" ? 0 : 1,
+        data.age === "" ? Number.NaN : Number(data.age),
         data.weight === "" ? Number.NaN : Number(data.weight),
         data.height === "" ? Number.NaN : Number(data.height),
-        data.age === "" ? Number.NaN : Number(data.age),
         data.alp === "" ? Number.NaN : Number(data.alp),
         data.creatinine === "" ? Number.NaN : Number(data.creatinine),
         data.ldh === "" ? Number.NaN : Number(data.ldh),
       ];
   
       // 入力データを前処理してNaNを処理
-      const processedInput = preprocessData(inputArray);
-  
-      // 予測を実行
-      const prediction = regression.predict([processedInput]);
-      setResult(prediction[0]);
+      const processedInput = preprocessData(inputArray)
+
+      // API RouteにPOSTして推論
+      const response = await fetch('/api/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: processedInput }),
+      })
+      const result = await response.json()
+      if (result.prediction !== undefined) {
+        setResult(Number(result.prediction))
+      } else {
+        setError(result.error || 'Prediction failed')
+      }
     } catch (err) {
-      setError("An error occurred during prediction. Please check your input values.");
-      console.error("Prediction error:", err);
+      setError('An error occurred during prediction. Please check your input values.')
+      console.error('Prediction error:', err)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const clearForm = () => {
     setData(initialData)
@@ -128,7 +131,7 @@ export default function MedicalMLApp() {
           <p className="text-gray-600 mb-4">Enter medical data to predict Appendicular Lean Mass</p>
           <div className="max-w-3xl mx-auto text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
             <p>
-              This application is a simplified version using Random Forest and a subset of the data. If you are interested in
+              This application uses LightGBM model converted to ONNX format for ALM prediction. If you are interested in
               using a more accurate TabPFN model, please feel free to contact us at{" "}
               <a href="mailto:k-kita@radiol.med.osaka-u.ac.jp" className="text-blue-600 hover:text-blue-800 underline">
                 k-kita@radiol.med.osaka-u.ac.jp
